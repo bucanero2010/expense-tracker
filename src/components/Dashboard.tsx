@@ -11,11 +11,14 @@ import { HistoricalStackedBar } from './HistoricalStackedBar';
 import { CategoryTable } from './CategoryTable';
 import { startOfMonth, subMonths, endOfMonth, format, getDate } from 'date-fns';
 
+export type Metric = 'spent' | 'transactions';
+
 export function Dashboard() {
   const [currentMonthExpenses, setCurrentMonthExpenses] = useState<Expense[]>([]);
   const [lastMonthExpenses, setLastMonthExpenses] = useState<Expense[]>([]);
   const [historicalExpenses, setHistoricalExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [metric, setMetric] = useState<Metric>('spent');
 
   useEffect(() => {
     fetchData();
@@ -59,7 +62,7 @@ export function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-[var(--muted)]">Loading...</div>
+        <div className="animate-pulse text-gray-400">Loading...</div>
       </div>
     );
   }
@@ -85,7 +88,32 @@ export function Dashboard() {
         <h1 className="text-xl font-semibold">
           {format(now, 'MMMM yyyy')}
         </h1>
-        <span className="text-sm text-[var(--muted)]">MTD (Day {dayOfMonth})</span>
+        <div className="flex items-center gap-3">
+          {/* Metric switcher */}
+          <div className="flex gap-1 bg-[var(--card)] border border-[var(--card-border)] rounded-lg p-0.5">
+            <button
+              onClick={() => setMetric('spent')}
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                metric === 'spent'
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'text-[var(--muted)]'
+              }`}
+            >
+              Spent
+            </button>
+            <button
+              onClick={() => setMetric('transactions')}
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                metric === 'transactions'
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'text-[var(--muted)]'
+              }`}
+            >
+              Txns
+            </button>
+          </div>
+          <span className="text-xs text-[var(--muted)]">Day {dayOfMonth}</span>
+        </div>
       </header>
 
       <KPICards
@@ -94,9 +122,17 @@ export function Dashboard() {
         maxCategoryDelta={maxCategoryDelta}
       />
 
-      <CategoryBar expenses={currentMonthExpenses} referenceDate={now} />
+      <CategoryBar
+        expenses={currentMonthExpenses}
+        referenceDate={now}
+        metric={metric}
+      />
 
-      <DailyLineChart expenses={currentMonthExpenses} referenceDate={now} />
+      <DailyLineChart
+        expenses={currentMonthExpenses}
+        referenceDate={now}
+        metric={metric}
+      />
 
       <HistoricalStackedBar expenses={historicalExpenses} />
 

@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { Expense } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { startOfMonth, parseISO, getDate } from 'date-fns';
 import { getCategoryColor } from '@/lib/categories';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface CategoryTableProps {
   currentExpenses: Expense[];
@@ -11,12 +13,19 @@ interface CategoryTableProps {
   referenceDate: Date;
 }
 
-interface RowData {
-  category: string;
+interface SubRow {
   subcategory: string;
   current: number;
   lastMonth: number;
   variation: number;
+}
+
+interface CategoryRow {
+  category: string;
+  current: number;
+  lastMonth: number;
+  variation: number;
+  subs: SubRow[];
 }
 
 export function CategoryTable({
@@ -24,6 +33,7 @@ export function CategoryTable({
   lastMonthExpenses,
   referenceDate,
 }: CategoryTableProps) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const dayOfMonth = getDate(referenceDate);
 
   // Current MTD
@@ -48,10 +58,6 @@ export function CategoryTable({
     return d >= lastMonthStart && d <= lastMonthSameDay;
   });
 
-  // Build rows: category + subcategory breakdown
-  const rows: RowData[] = [];
-  const categoryTotals: Record<string, { current: number; lastMonth: number }> = {};
-
   // Group current by category+subcategory
   const currentGrouped: Record<string, Record<string, number>> = {};
   currentMTD.forEach((e) => {
@@ -68,47 +74,55 @@ export function CategoryTable({
       (lastGrouped[e.category][e.subcategory] ?? 0) + e.amount;
   });
 
-  // Merge all categories
+  // Build category rows
   const allCategories = new Set([
     ...Object.keys(currentGrouped),
     ...Object.keys(lastGrouped),
   ]);
 
-  const sortedCategories = Array.from(allCategories).sort((a, b) => {
-    const aTotal =
-      Object.values(currentGrouped[a] ?? {}).reduce((s, v) => s + v, 0);
-    const bTotal =
-      Object.values(currentGrouped[b] ?? {}).reduce((s, v) => s + v, 0);
-    return bTotal - aTotal;
-  });
+  const rows: CategoryRow[] = Array.from(allCategories)
+    .map((cat) => {
+      const currentSubs = currentGrouped[cat] ?? {};
+      const lastSubs = lastGrouped[cat] ?? {};
+      const allSubs = new Set([...Object.keys(currentSubs), ...Object.keys(lastSubs)]);
 
-  sortedCategories.forEach((cat) => {
-    const currentSubs = currentGrouped[cat] ?? {};
-    const lastSubs = lastGrouped[cat] ?? {};
-    const allSubs = new Set([...Object.keys(currentSubs), ...Object.keys(lastSubs)]);
+      let catCurrent = 0;
+      let catLast = 0;
+      const subs: SubRow[] = [];
 
-    let catCurrent = 0;
-    let catLast = 0;
+      allSubs.forEach((sub) => {
+        const curr = currentSubs[sub] ?? 0;
+        const last = lastSubs[sub] ?? 0;
+        catCurrent += curr;
+        catLast += last;
+        if (curr !== 0 || last !== 0) {
+          subs.push({ subcategory: sub, current: curr, lastMonth: last, variation: curr - last });
+        }
+      });
 
-    allSubs.forEach((sub) => {
-      const curr = currentSubs[sub] ?? 0;
-      const last = lastSubs[sub] ?? 0;
-      catCurrent += curr;
-      catLast += last;
+      subs.sort((a, b) => b.current - a.current);
 
-      if (curr !== 0 || last !== 0) {
-        rows.push({
-          category: cat,
-          subcategory: sub,
-          current: curr,
-          lastMonth: last,
-          variation: curr - last,
-        });
-      }
+      return {
+        category: cat,
+        current: catCurrent,
+        lastMonth: catLast,
+        variation: catCurrent - catLast,
+        subs,
+      };
+    })
+    .sort((a, b) => b.current - a.current);
+
+  const grandCurrent = rows.reduce((s, r) => s + r.current, 0);
+  const grandLast = rows.reduce((s, r) => s + r.lastMonth, 0);
+
+  function toggleCategory(cat: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
     });
-
-    categoryTotals[cat] = { current: catCurrent, lastMonth: catLast };
-  });
+  }
 
   return (
     <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4 overflow-x-auto">
@@ -119,48 +133,31 @@ export function CategoryTable({
         <thead>
           <tr className="text-[var(--muted)] border-b border-[var(--card-border)]">
             <th className="text-left py-2 pr-2">Category</th>
-            <th className="text-left py-2 pr-2">Subcategory</th>
             <th className="text-right py-2 pr-2">Current</th>
             <th className="text-right py-2 pr-2">Last Mo.</th>
             <th className="text-right py-2">Δ</th>
           </tr>
         </thead>
         <tbody>
-          {sortedCategories.map((cat) => {
-            const catRows = rows.filter((r) => r.category === cat);
-            const totals = categoryTotals[cat];
+          {rows.map((row) => {
+            const isExpanded = expanded.has(row.category);
             return (
               <CategorySection
-                key={cat}
-                category={cat}
-                rows={catRows}
-                totals={totals}
+                key={row.category}
+                row={row}
+                isExpanded={isExpanded}
+                onToggle={() => toggleCategory(row.category)}
               />
             );
           })}
         </tbody>
         <tfoot>
           <tr className="border-t border-[var(--card-border)] font-semibold">
-            <td className="py-2" colSpan={2}>
-              Grand Total
-            </td>
-            <td className="text-right py-2 pr-2">
-              {formatCurrency(
-                Object.values(categoryTotals).reduce((s, t) => s + t.current, 0)
-              )}
-            </td>
-            <td className="text-right py-2 pr-2">
-              {formatCurrency(
-                Object.values(categoryTotals).reduce((s, t) => s + t.lastMonth, 0)
-              )}
-            </td>
+            <td className="py-2">Grand Total</td>
+            <td className="text-right py-2 pr-2">{formatCurrency(grandCurrent)}</td>
+            <td className="text-right py-2 pr-2">{formatCurrency(grandLast)}</td>
             <td className="text-right py-2">
-              <VariationCell
-                value={
-                  Object.values(categoryTotals).reduce((s, t) => s + t.current, 0) -
-                  Object.values(categoryTotals).reduce((s, t) => s + t.lastMonth, 0)
-                }
-              />
+              <VariationCell value={grandCurrent - grandLast} />
             </td>
           </tr>
         </tfoot>
@@ -170,48 +167,61 @@ export function CategoryTable({
 }
 
 function CategorySection({
-  category,
-  rows,
-  totals,
+  row,
+  isExpanded,
+  onToggle,
 }: {
-  category: string;
-  rows: RowData[];
-  totals: { current: number; lastMonth: number };
+  row: CategoryRow;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   return (
     <>
-      {rows.map((row, i) => (
-        <tr key={`${row.category}-${row.subcategory}`} className="border-b border-[var(--card-border)]/30">
-          {i === 0 && (
-            <td
-              rowSpan={rows.length + 1}
-              className="py-1.5 pr-2 align-top font-medium"
-              style={{ color: getCategoryColor(category) }}
+      <tr
+        className="border-b border-[var(--card-border)] cursor-pointer active:bg-white/5"
+        onClick={onToggle}
+      >
+        <td className="py-2 pr-2">
+          <div className="flex items-center gap-1.5">
+            {isExpanded ? (
+              <ChevronDown size={12} className="text-[var(--muted)]" />
+            ) : (
+              <ChevronRight size={12} className="text-[var(--muted)]" />
+            )}
+            <span
+              className="font-medium"
+              style={{ color: getCategoryColor(row.category) }}
             >
-              {category}
-            </td>
-          )}
-          <td className="py-1.5 pr-2">{row.subcategory}</td>
-          <td className="text-right py-1.5 pr-2">{formatCurrency(row.current)}</td>
-          <td className="text-right py-1.5 pr-2">{formatCurrency(row.lastMonth)}</td>
-          <td className="text-right py-1.5">
-            <VariationCell value={row.variation} />
-          </td>
-        </tr>
-      ))}
-      {/* Category total row */}
-      <tr className="border-b border-[var(--card-border)]">
-        <td className="py-1.5 pr-2 font-medium text-[var(--muted)]">Total</td>
-        <td className="text-right py-1.5 pr-2 font-medium">
-          {formatCurrency(totals.current)}
+              {row.category}
+            </span>
+          </div>
         </td>
-        <td className="text-right py-1.5 pr-2 font-medium">
-          {formatCurrency(totals.lastMonth)}
+        <td className="text-right py-2 pr-2 font-medium">
+          {formatCurrency(row.current)}
         </td>
-        <td className="text-right py-1.5 font-medium">
-          <VariationCell value={totals.current - totals.lastMonth} />
+        <td className="text-right py-2 pr-2 font-medium">
+          {formatCurrency(row.lastMonth)}
+        </td>
+        <td className="text-right py-2 font-medium">
+          <VariationCell value={row.variation} />
         </td>
       </tr>
+      {isExpanded &&
+        row.subs.map((sub) => (
+          <tr
+            key={`${row.category}-${sub.subcategory}`}
+            className="border-b border-[var(--card-border)]/30"
+          >
+            <td className="py-1.5 pr-2 pl-6 text-[var(--muted)]">
+              {sub.subcategory}
+            </td>
+            <td className="text-right py-1.5 pr-2">{formatCurrency(sub.current)}</td>
+            <td className="text-right py-1.5 pr-2">{formatCurrency(sub.lastMonth)}</td>
+            <td className="text-right py-1.5">
+              <VariationCell value={sub.variation} />
+            </td>
+          </tr>
+        ))}
     </>
   );
 }

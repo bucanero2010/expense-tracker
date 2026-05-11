@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { Dashboard } from '@/components/Dashboard';
 import { AddExpense } from '@/components/AddExpense';
 import { TransactionList } from '@/components/TransactionList';
-import { BarChart3, PlusCircle, List } from 'lucide-react';
+import { DeepDive } from '@/components/DeepDive';
+import { BarChart3, PlusCircle, List, Search } from 'lucide-react';
 
-type Tab = 'dashboard' | 'add' | 'transactions';
+type Tab = 'dashboard' | 'add' | 'deepdive' | 'transactions';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -23,6 +24,7 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto pb-20">
         {activeTab === 'dashboard' && <Dashboard key={refreshKey} />}
         {activeTab === 'add' && <AddExpense onSuccess={handleExpenseAdded} />}
+        {activeTab === 'deepdive' && <DeepDive key={refreshKey} />}
         {activeTab === 'transactions' && <TransactionList key={refreshKey} />}
       </main>
 
@@ -30,30 +32,39 @@ export default function Home() {
       <nav className="fixed bottom-0 left-0 right-0 bg-[var(--card)] border-t border-[var(--card-border)] flex justify-around items-center h-16 safe-bottom z-50">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 ${
+          className={`flex flex-col items-center gap-1 px-3 py-2 ${
             activeTab === 'dashboard' ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
           }`}
         >
-          <BarChart3 size={22} />
-          <span className="text-xs">Dashboard</span>
+          <BarChart3 size={20} />
+          <span className="text-[10px]">Dashboard</span>
         </button>
         <button
           onClick={() => setActiveTab('add')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 ${
+          className={`flex flex-col items-center gap-1 px-3 py-2 ${
             activeTab === 'add' ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
           }`}
         >
-          <PlusCircle size={22} />
-          <span className="text-xs">Add</span>
+          <PlusCircle size={20} />
+          <span className="text-[10px]">Add</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('deepdive')}
+          className={`flex flex-col items-center gap-1 px-3 py-2 ${
+            activeTab === 'deepdive' ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
+          }`}
+        >
+          <Search size={20} />
+          <span className="text-[10px]">Deep Dive</span>
         </button>
         <button
           onClick={() => setActiveTab('transactions')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 ${
+          className={`flex flex-col items-center gap-1 px-3 py-2 ${
             activeTab === 'transactions' ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
           }`}
         >
-          <List size={22} />
-          <span className="text-xs">History</span>
+          <List size={20} />
+          <span className="text-[10px]">History</span>
         </button>
       </nav>
     </div>

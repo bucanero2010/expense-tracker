@@ -1,7 +1,7 @@
 'use client';
 
 import { Expense } from '@/lib/types';
-import { startOfMonth, eachDayOfInterval, format, parseISO, getDate } from 'date-fns';
+import { startOfMonth, eachDayOfInterval, format, getDate } from 'date-fns';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,13 +11,15 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { Metric } from './Dashboard';
 
 interface DailyLineChartProps {
   expenses: Expense[];
   referenceDate: Date;
+  metric: Metric;
 }
 
-export function DailyLineChart({ expenses, referenceDate }: DailyLineChartProps) {
+export function DailyLineChart({ expenses, referenceDate, metric }: DailyLineChartProps) {
   const monthStart = startOfMonth(referenceDate);
   const days = eachDayOfInterval({ start: monthStart, end: referenceDate });
 
@@ -25,18 +27,31 @@ export function DailyLineChart({ expenses, referenceDate }: DailyLineChartProps)
   const data = days.map((day) => {
     const dayStr = format(day, 'yyyy-MM-dd');
     const dayExpenses = expenses.filter((e) => e.date === dayStr);
-    const dayTotal = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
-    cumulative += dayTotal;
-    return {
-      day: getDate(day),
-      daily: Math.round(dayTotal * 100) / 100,
-      cumulative: Math.round(cumulative * 100) / 100,
-    };
+
+    if (metric === 'spent') {
+      const dayTotal = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+      cumulative += dayTotal;
+      return {
+        day: getDate(day),
+        value: Math.round(cumulative * 100) / 100,
+      };
+    } else {
+      cumulative += dayExpenses.length;
+      return {
+        day: getDate(day),
+        value: cumulative,
+      };
+    }
   });
+
+  const label = metric === 'spent' ? 'Cumulative Spend' : 'Cumulative Transactions';
+  const formatValue = metric === 'spent'
+    ? (v: number) => `€${v.toFixed(2)}`
+    : (v: number) => `${v} txns`;
 
   return (
     <div className="bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-4">
-      <h2 className="text-sm font-medium text-[var(--muted)] mb-3">Cumulative Spend</h2>
+      <h2 className="text-sm font-medium text-[var(--muted)] mb-3">{label}</h2>
       <div className="h-40">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -67,11 +82,11 @@ export function DailyLineChart({ expenses, referenceDate }: DailyLineChartProps)
                 fontSize: '12px',
               }}
               labelFormatter={(label) => `Day ${label}`}
-              formatter={(value) => [`€${Number(value).toFixed(2)}`, 'Cumulative']}
+              formatter={(value) => [formatValue(Number(value)), label]}
             />
             <Area
               type="monotone"
-              dataKey="cumulative"
+              dataKey="value"
               stroke="var(--accent)"
               strokeWidth={2}
               fill="url(#colorCumulative)"
