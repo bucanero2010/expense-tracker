@@ -20,6 +20,8 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0f',
 };
 
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+
 export default function RootLayout({
   children,
 }: {
@@ -30,7 +32,10 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="min-h-screen safe-bottom">{children}</body>
+      <body className="min-h-screen safe-bottom">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }
