@@ -16,6 +16,7 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
   const [subcategory, setSubcategory] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [note, setNote] = useState('');
+  const [sharedWith, setSharedWith] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -32,6 +33,7 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
       subcategory,
       amount: parseFloat(amount),
       note: note || null,
+      shared_with: sharedWith ? 'Alyssa' : null,
     });
 
     setSaving(false);
@@ -42,6 +44,7 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
       setCategory('');
       setSubcategory('');
       setNote('');
+      setSharedWith(false);
       setDate(format(new Date(), 'yyyy-MM-dd'));
       onSuccess();
     }
@@ -141,7 +144,7 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
       )}
 
       {/* Optional note */}
-      <div className="mb-6">
+      <div className="mb-4">
         <label className="text-sm text-[var(--muted)] mb-2 block">Note (optional)</label>
         <input
           type="text"
@@ -150,6 +153,29 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
           onChange={(e) => setNote(e.target.value)}
           className="w-full bg-[var(--card)] border border-[var(--card-border)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors"
         />
+      </div>
+
+      {/* Shared with toggle */}
+      <div className="mb-6">
+        <button
+          onClick={() => setSharedWith(!sharedWith)}
+          className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all ${
+            sharedWith
+              ? 'bg-pink-500/10 border border-pink-500/50'
+              : 'bg-[var(--card)] border border-[var(--card-border)]'
+          }`}
+        >
+          <div
+            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+              sharedWith ? 'bg-pink-500 border-pink-500' : 'border-[var(--card-border)]'
+            }`}
+          >
+            {sharedWith && <Check size={12} className="text-white" />}
+          </div>
+          <span className={`text-sm ${sharedWith ? 'text-pink-400' : 'text-[var(--foreground)]'}`}>
+            Shared with Alyssa
+          </span>
+        </button>
       </div>
 
       {/* Submit button */}

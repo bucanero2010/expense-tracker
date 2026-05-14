@@ -5,6 +5,7 @@ export interface Expense {
   subcategory: string;
   amount: number;
   note: string | null;
+  shared_with: string | null;
   created_at: string;
 }
 

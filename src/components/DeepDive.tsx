@@ -16,6 +16,7 @@ export function DeepDive() {
   );
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sharedOnly, setSharedOnly] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -50,9 +51,11 @@ export function DeepDive() {
     byCategoryCount[e.category] = (byCategoryCount[e.category] ?? 0) + 1;
   });
 
-  const filteredExpenses = selectedCategory
-    ? expenses.filter((e) => e.category === selectedCategory)
-    : expenses;
+  const filteredExpenses = expenses.filter((e) => {
+    if (sharedOnly && !e.shared_with) return false;
+    if (selectedCategory && e.category !== selectedCategory) return false;
+    return true;
+  });
 
   const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
   const totalTransactions = expenses.length;
@@ -107,6 +110,24 @@ export function DeepDive() {
           <div className="text-lg font-semibold">{totalTransactions}</div>
         </div>
       </div>
+
+      {/* Shared filter */}
+      <button
+        onClick={() => setSharedOnly(!sharedOnly)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+          sharedOnly
+            ? 'bg-pink-500/10 border border-pink-500/50 text-pink-400'
+            : 'bg-[var(--card)] border border-[var(--card-border)] text-[var(--muted)]'
+        }`}
+      >
+        <span>{sharedOnly ? '♥' : '♡'}</span>
+        <span>Shared with Alyssa</span>
+        {sharedOnly && (
+          <span className="ml-auto font-medium">
+            {formatCurrency(filteredExpenses.reduce((s, e) => s + e.amount, 0))}
+          </span>
+        )}
+      </button>
 
       {loading ? (
         <div className="text-center text-[var(--muted)] py-8">Loading...</div>
@@ -176,6 +197,9 @@ export function DeepDive() {
                   <div className="text-xs text-[var(--muted)]">
                     {format(parseISO(expense.date), 'MMM d')} · {expense.category}
                     {expense.note && ` · ${expense.note}`}
+                    {expense.shared_with && (
+                      <span className="ml-1 text-pink-400">· {expense.shared_with}</span>
+                    )}
                   </div>
                 </div>
                 <div className="text-sm font-semibold">

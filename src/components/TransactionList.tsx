@@ -116,6 +116,9 @@ export function TransactionList() {
                         <div className="text-xs text-[var(--muted)]">
                           {expense.category}
                           {expense.note && ` · ${expense.note}`}
+                          {expense.shared_with && (
+                            <span className="ml-1 text-pink-400">· {expense.shared_with}</span>
+                          )}
                         </div>
                       </div>
                       <div className="text-sm font-semibold">
