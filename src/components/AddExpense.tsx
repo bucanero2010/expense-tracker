@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CATEGORIES, getSubcategories } from '@/lib/categories';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { Check, Calendar } from 'lucide-react';
 
 interface AddExpenseProps {
@@ -18,8 +18,12 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
   const [note, setNote] = useState('');
   const [sharedWith, setSharedWith] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
   const subcategories = category ? getSubcategories(category) : [];
 
@@ -39,14 +43,16 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
     setSaving(false);
 
     if (!error) {
-      // Reset form
+      // Reset form but stay on page
       setAmount('');
       setCategory('');
       setSubcategory('');
       setNote('');
       setSharedWith(false);
       setDate(format(new Date(), 'yyyy-MM-dd'));
-      onSuccess();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      amountRef.current?.focus();
     }
   };
 
@@ -81,13 +87,39 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
 
       {/* Date selector */}
       <div className="mb-4">
-        <button
-          onClick={() => setShowDatePicker(!showDatePicker)}
-          className="flex items-center gap-2 px-3 py-2 bg-[var(--card)] border border-[var(--card-border)] rounded-lg text-sm"
-        >
-          <Calendar size={16} />
-          <span>{date === format(new Date(), 'yyyy-MM-dd') ? 'Today' : date}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setDate(today); setShowDatePicker(false); }}
+            className={`px-3 py-2 rounded-lg text-sm transition-all ${
+              date === today
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--card)] border border-[var(--card-border)] text-[var(--foreground)]'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => { setDate(yesterday); setShowDatePicker(false); }}
+            className={`px-3 py-2 rounded-lg text-sm transition-all ${
+              date === yesterday
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--card)] border border-[var(--card-border)] text-[var(--foreground)]'
+            }`}
+          >
+            Yesterday
+          </button>
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
+              date !== today && date !== yesterday
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--card)] border border-[var(--card-border)] text-[var(--foreground)]'
+            }`}
+          >
+            <Calendar size={14} />
+            <span>{date !== today && date !== yesterday ? date : 'Other'}</span>
+          </button>
+        </div>
         {showDatePicker && (
           <input
             type="date"
@@ -182,10 +214,14 @@ export function AddExpense({ onSuccess }: AddExpenseProps) {
       <button
         onClick={handleSubmit}
         disabled={!amount || !category || !subcategory || saving}
-        className="w-full bg-[var(--accent)] text-white font-semibold py-3.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+        className={`w-full font-semibold py-3.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all ${
+          saved
+            ? 'bg-[var(--accent-green)] text-white'
+            : 'bg-[var(--accent)] text-white'
+        }`}
       >
         <Check size={20} />
-        {saving ? 'Saving...' : 'Save Expense'}
+        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Expense'}
       </button>
     </div>
   );
